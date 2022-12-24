@@ -1,1 +1,1 @@
-# python-backend-proj
+# GraphQL Backend for Social Media App
