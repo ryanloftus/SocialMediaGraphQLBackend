@@ -1,0 +1,53 @@
+type User {
+    username: String!
+    posts: [Post!]!
+    followers: [User!]!
+    following: [User!]!
+    profilePicUrl: String
+    chats: [Chat]!
+}
+
+type Post {
+    id: String!
+    author: User!
+    media: [Media!]!
+    caption: String
+    comments: [Comment!]!
+    timestamp: Date!
+}
+
+type Media {
+    id: String!
+    type: MediaType
+    mediaUrl: String!
+}
+
+enum MediaType {
+    IMAGE
+    VIDEO
+}
+
+type Comment {
+    id: String!
+    author: User!
+    text: String!
+    replies: [Comment!]!
+    timestamp: Date!
+}
+
+type Chat {
+    id: String!
+    chatName: String
+    members: [User!]!
+    messages: [Message!]!
+}
+
+type Message {
+    id: String!
+    author: User!
+    text: String!
+    media: [Media!]
+    timestamp: Date!
+}
+
+scalar Date
