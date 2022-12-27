@@ -10,9 +10,9 @@ const AppDataSource = new DataSource({
     database: "social-media",
     synchronize: true,
     logging: true,
-    entities: ["src/entity/**/*.ts"],
-    subscribers: ["src/subscriber/**/*.ts"],
-    migrations: ["src/migration/**/*.ts"],
+    entities: ["src/entities/**/*.ts"],
+    subscribers: ["src/subscribers/**/*.ts"],
+    migrations: ["src/migrations/**/*.ts"],
 })
 
 export default AppDataSource

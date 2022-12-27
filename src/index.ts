@@ -2,12 +2,12 @@ import { ApolloServer } from '@apollo/server';
 import { startStandaloneServer } from '@apollo/server/standalone';
 import AppDataSource from './data-source.js'
 import { buildSchema } from 'type-graphql';
-import HelloResolver from './resolvers/hello-resolver.js'
+import UserResolver from './resolvers/user-resolver.js'
 
 try {
     const server = new ApolloServer({
         schema: await buildSchema({
-            resolvers: [HelloResolver],
+            resolvers: [UserResolver],
             validate: false,
         })
     });
