@@ -1,4 +1,5 @@
 import { Query, Resolver, ObjectType, Field, Mutation, Arg } from 'type-graphql'
+import argon2 from 'argon2'
 import User from '../entities/user.js'
 import FieldError from '../utils/field-error.js'
 import OperationResultResponse from '../utils/operation-result.js'
@@ -27,8 +28,8 @@ export default class UserResolver {
         }
 
         try {
-            // TODO: hash the password
-            user = await User.create({ username: username, password: password }).save()
+            const hashedPassword = await argon2.hash(password)
+            user = await User.create({ username: username, password: hashedPassword }).save()
         } catch (error) {
             errors.push({ field: "username", message: "username already exists" })
         }
@@ -68,7 +69,8 @@ export default class UserResolver {
         try {
             user = await User.findOne({ where: { token: userToken } })
             
-            if (user?.password !== oldPassword) {
+            const hashedOldPassword = await argon2.hash(oldPassword)
+            if (user?.password !== hashedOldPassword) {
                 errors.push({ field: "oldPassword", message: "password entered is incorrect" })
             }
 
@@ -81,7 +83,8 @@ export default class UserResolver {
             }
 
             if (errors.length === 0) {
-                await User.update({ token: userToken }, { password: newPassword })
+                const hashedPassword = await argon2.hash(newPassword)
+                await User.update({ token: userToken }, { password: hashedPassword })
             }
         } catch {
             errors.push({ field: "userToken", message: `user with token ${userToken} does not exist` })
@@ -107,6 +110,7 @@ export default class UserResolver {
                 errors: [{ field: "userToken", message: `user with token ${userToken} does not exist`}],
             }
         }
+        return { didOperationSucceed: true }
     }
 }
 
