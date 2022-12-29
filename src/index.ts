@@ -12,7 +12,7 @@ try {
         })
     });
 
-    const dbConnection = await AppDataSource.initialize()
+    await AppDataSource.initialize()
 
     const { url } = await startStandaloneServer(server, {
         listen: { port: 4000 },
