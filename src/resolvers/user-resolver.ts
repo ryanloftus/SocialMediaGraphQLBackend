@@ -61,7 +61,6 @@ export default class UserResolver {
         @Arg("userToken") userToken: string,
         @Arg("oldPassword") oldPassword: string,
         @Arg("newPassword") newPassword: string,
-        @Arg("confirmPassword") confirmPassword: string,
     ) {
         let errors: FieldError[] = Array()
         let user: User | null
@@ -76,10 +75,6 @@ export default class UserResolver {
 
             if (newPassword.length < MIN_PASSWORD_LENGTH) {
                 errors.push({ field: "newPassword", message: `new password must be at least ${MIN_PASSWORD_LENGTH} characters long` })
-            }
-
-            if (newPassword !== confirmPassword) {
-                errors.push({ field: "confirmPassword", message: "new password and confirm password do not match" })
             }
 
             if (errors.length === 0) {

@@ -1,5 +1,5 @@
 import { Field, ObjectType } from 'type-graphql'
-import FieldError from './field-error'
+import FieldError from './field-error.js'
 
 @ObjectType()
 export default class OperationResultResponse {
@@ -7,6 +7,6 @@ export default class OperationResultResponse {
     @Field()
     didOperationSucceed: boolean
 
-    @Field()
+    @Field(() => [FieldError], { nullable: true })
     errors?: FieldError[]
 }

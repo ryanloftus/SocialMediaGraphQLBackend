@@ -5,6 +5,7 @@ import {
     Column,
     BaseEntity,
     ManyToMany,
+    JoinTable,
 } from "typeorm";
 
 @ObjectType()
@@ -22,13 +23,16 @@ export default class User extends BaseEntity {
     @Column()
     password!: string
 
-    @ManyToMany(() => User, (user) => user.following)
-    followers: User[]
+    @Field(() => [User], { nullable: true })
+    @ManyToMany(() => User)
+    followers?: User[]
 
-    @ManyToMany(() => User, (user) => user.followers)
-    following: User[]
+    @Field(() => [User], { nullable: true })
+    @ManyToMany(() => User)
+    @JoinTable()
+    following?: User[]
 
-    @Field(() => String, { nullable: true, defaultValue: null })
+    @Field(() => String, { nullable: true })
     @Column({ type: String, nullable: true })
-    profilePicUrl?: string | null
+    profilePicUrl?: string
 }
