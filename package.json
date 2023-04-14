@@ -1,5 +1,5 @@
 {
-  "name": "SocialMediaGraphQLBackend",
+  "name": "social-media-backend",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -10,15 +10,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ryanloftus/SocialMediaGraphQLBackend.git"
+    "url": "git+https://github.com/ryanloftus/social-media-backend.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ryanloftus/SocialMediaGraphQLBackend/issues"
+    "url": "https://github.com/ryanloftus/social-media-backend/issues"
   },
-  "homepage": "https://github.com/ryanloftus/SocialMediaGraphQLBackend#readme",
+  "homepage": "https://github.com/ryanloftus/social-media-backend#readme",
   "devDependencies": {
     "@types/cors": "^2.8.13",
     "@types/express-session": "^1.17.5",
