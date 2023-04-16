@@ -1,3 +1,3 @@
 # GraphQL Backend for Social Media App
 
-Built using TypeScript, PostgreSQL, Redis, TypeORM, TypeGraphQL, and Apollo
+Built using TypeScript, PostgreSQL, Redis, TypeORM, and TypeGraphQL
