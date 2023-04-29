@@ -1,18 +1,20 @@
-import { ApolloServer } from '@apollo/server'
-import { expressMiddleware } from '@apollo/server/express4'
+import "reflect-metadata";
+import { config } from "dotenv-safe";
+import { ApolloServer } from '@apollo/server';
+import { expressMiddleware } from '@apollo/server/express4';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
-import Redis from 'ioredis'
-import session from 'express-session'
-import connectRedis from 'connect-redis'
-import express from 'express'
-import http from 'http'
-import cors from 'cors'
-import bodyParser from 'body-parser'
-import { buildSchema } from 'type-graphql'
-import UserResolver from './resolvers/user-resolver.js'
-import AppDataSource from './data-source.js'
+import Redis from 'ioredis';
+import session from 'express-session';
+import connectRedis from 'connect-redis';
+import express from 'express';
+import http from 'http';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import { buildSchema } from 'type-graphql';
+import UserResolver from './resolvers/user-resolver.js';
 import { MyContext } from './types/my-context.js';
 import { COOKIE_NAME } from './utils/constants.js';
+import { DataSource } from "typeorm";
 
 declare module 'express-session' {
     export interface SessionData {
@@ -20,16 +22,32 @@ declare module 'express-session' {
     }
 }
 
+config();
+
+const AppDataSource = new DataSource({
+    type: "postgres",
+    host: process.env.HOST,
+    port: parseInt(process.env.DATABASE_PORT),
+    username: process.env.DATABASE_USER,
+    password: null,
+    database: process.env.DATABASE_NAME,
+    synchronize: true,
+    logging: true,
+    entities: ["src/entities/**/*.ts"],
+    subscribers: ["src/subscribers/**/*.ts"],
+    migrations: ["src/migrations/**/*.ts"],
+});
+
 try {
-    const dataSource = await AppDataSource.initialize()
+    const dataSource = await AppDataSource.initialize();
 
-    const app = express()
+    const app = express();
 
-    const httpServer = http.createServer(app)
+    const httpServer = http.createServer(app);
 
-    const RedisStore = connectRedis(session)
+    const RedisStore = connectRedis(session);
 
-    const redis = new Redis()
+    const redis = new Redis();
 
     app.use(
         session({
@@ -47,7 +65,7 @@ try {
             secret: process.env.SESSION_SECRET,
             resave: false,
         }),
-    )
+    );
 
     const server = new ApolloServer<MyContext>({
         schema: await buildSchema({
@@ -55,9 +73,9 @@ try {
             validate: false,
         }),
         plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
-    })
+    });
 
-    await server.start()
+    await server.start();
 
     app.use(
         '/graphql',
@@ -71,11 +89,11 @@ try {
                 dataSource,
             }),
         }),
-    )
+    );
 
-    await new Promise<void>((resolve) => httpServer.listen({ port: process.env.PORT }, resolve))
+    await new Promise<void>((resolve) => httpServer.listen({ port: parseInt(process.env.PORT) }, resolve));
 
-    console.log(`🚀 Server ready at http://localhost:4000/graphql`)
+    console.log(`🚀 Server ready at http://${process.env.HOST}:${process.env.PORT}/graphql`);
 } catch (error) {
-    console.error("Error: ", error)
+    console.error("Error: ", error);
 }

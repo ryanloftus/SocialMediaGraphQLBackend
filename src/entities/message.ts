@@ -1,5 +1,5 @@
 import { ObjectType, Field } from "type-graphql";
-import { Entity, Column, BaseEntity, CreateDateColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Entity, Column, BaseEntity, CreateDateColumn, ManyToOne, PrimaryGeneratedColumn, Relation } from "typeorm";
 import Chat from "./chat.js";
 import User from "./user.js";
 
@@ -17,13 +17,13 @@ export default class Message extends BaseEntity {
 
     @Field(() => User)
     @ManyToOne(() => User)
-    sender!: User
+    sender!: Relation<User>
 
     @Field(() => String)
     @CreateDateColumn()
     timestamp!: Date;
 
     @Field(() => Chat)
-    @ManyToOne(() => Chat, (chat) => chat.messages)
-    chat!: Chat;
+    @ManyToOne(() => Chat)
+    chat!: Relation<Chat>;
 }

@@ -1,5 +1,5 @@
 import { ObjectType, Field } from "type-graphql";
-import { Entity, Column, BaseEntity, OneToMany, JoinTable, ManyToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Entity, Column, BaseEntity, OneToMany, JoinTable, ManyToMany, PrimaryGeneratedColumn, Relation } from "typeorm";
 import User from "./user.js";
 import Message from "./message.js";
 
@@ -12,11 +12,11 @@ export default class Chat extends BaseEntity {
     id!: string
 
     @Field(() => [User])
-    @ManyToMany(() => User, (user) => user.chats)
+    @ManyToMany(() => User, (user: User) => user.chats)
     @JoinTable()
-    members!: User[]
+    members!: Relation<User[]>
 
     @Field(() => [Message])
     @OneToMany(() => Message, (message) => message.chat)
-    messages!: Message[]
+    messages!: Relation<Message[]>
 }
