@@ -3,6 +3,7 @@ import argon2 from 'argon2'
 import User from '../entities/user.js'
 import OperationResultResponse from '../utils/operation-result.js'
 import { MyContext } from '../types/my-context.js'
+import { COOKIE_NAME } from '../utils/constants.js'
 
 @ObjectType()
 class UserResponse {
@@ -58,10 +59,11 @@ export default class UserResolver {
 
     @Mutation(() => OperationResultResponse)
     async changePassword(
-        @Arg("userToken") userToken: string,
         @Arg("oldPassword") oldPassword: string,
         @Arg("newPassword") newPassword: string,
+        @Ctx() { req }: MyContext,
     ): Promise<OperationResultResponse> {
+        const userToken = req.session.userToken;
         let error: string = null
         let user: User = null
 
@@ -91,18 +93,21 @@ export default class UserResolver {
 
     @Mutation(() => OperationResultResponse)
     async deleteUser(
-        @Arg("userToken") userToken: string,
+        @Ctx() { req }: MyContext,
     ): Promise<OperationResultResponse> {
+        const userToken = req.session.userToken;
+
         try {
-            const user: User = await User.findOne({ where: { token: userToken } })
-            await user.remove()
+            const user: User = await User.findOne({ where: { token: userToken } });
+            await user.remove();
         } catch {
             return {
                 didOperationSucceed: false,
                 error: `user with token ${userToken} does not exist`,
-            }
+            };
         }
-        return { didOperationSucceed: true }
+
+        return { didOperationSucceed: true };
     }
 
     @Mutation(() => UserResponse)
@@ -114,11 +119,24 @@ export default class UserResolver {
         const user = await User.findOneBy({ username: username });
         const valid = user && await argon2.verify(user.password, password);
         if (valid) {
-            req.session.userToken = user.token; // todo: check user token from context in each mutation/query
+            req.session.userToken = user.token;
             return { user };
         } else {
             return { error: 'username or password is incorrect' };
         }
+    }
+
+    @Mutation(() => OperationResultResponse)
+    async logout(
+        @Ctx() { req, res }: MyContext,
+    ): Promise<OperationResultResponse> {
+        return new Promise((resolve) => {
+            req.session.destroy((err) => {
+                res.clearCookie(COOKIE_NAME);
+                if (err) resolve({ didOperationSucceed: false, error: 'failed to end session' });
+                else resolve({ didOperationSucceed: true });
+            });
+        })
     }
 }
 

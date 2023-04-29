@@ -12,6 +12,7 @@ import { buildSchema } from 'type-graphql'
 import UserResolver from './resolvers/user-resolver.js'
 import AppDataSource from './data-source.js'
 import { MyContext } from './types/my-context.js';
+import { COOKIE_NAME } from './utils/constants.js';
 
 declare module 'express-session' {
     export interface SessionData {
@@ -20,8 +21,7 @@ declare module 'express-session' {
 }
 
 try {
-    // connect to Postgres
-    await AppDataSource.initialize()
+    const dataSource = await AppDataSource.initialize()
 
     const app = express()
 
@@ -33,7 +33,7 @@ try {
 
     app.use(
         session({
-            name: 'sid',
+            name: COOKIE_NAME,
             cookie: {
                 maxAge: 1000 * 60 * 60 * 24 * 365, // 1 year
                 httpOnly: true,
@@ -68,6 +68,7 @@ try {
                 req,
                 res,
                 redis,
+                dataSource,
             }),
         }),
     )

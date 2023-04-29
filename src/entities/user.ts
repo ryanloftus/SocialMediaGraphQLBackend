@@ -37,6 +37,10 @@ export default class User extends BaseEntity {
     @Column({ type: String, nullable: true })
     profilePicUrl?: string
 
+    @Field(() => String, { nullable: true })
+    @Column({ type: String, nullable: true })
+    bio?: string
+
     @Field(() => [Chat])
     @ManyToMany(() => Chat, (chat) => chat.members)
     chats?: Chat[]

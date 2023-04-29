@@ -1,8 +1,10 @@
-import { Query, Resolver, ObjectType, Field, Mutation, Arg, Ctx } from 'type-graphql';
+import { Query, Resolver, ObjectType, Field, Mutation, Arg, Ctx, UseMiddleware } from 'type-graphql';
 import Chat from '../entities/chat.js';
 import Message from '../entities/message';
 import OperationResultResponse from '../utils/operation-result';
 import { MyContext } from '../types/my-context';
+import { isAuth } from '../middleware/is-auth.js';
+import User from '../entities/user.js';
 
 @ObjectType()
 class ChatResponse {
@@ -26,43 +28,55 @@ class MessageResponse {
 export default class ChatResolver {
 
     @Mutation(() => ChatResponse)
+    @UseMiddleware(isAuth)
     async createChat(
+        @Arg("memberUserTokens") members: string[],
+        @Ctx() { req }: MyContext,  
+    ): Promise<ChatResponse> {
+        const userToken = req.session.userToken;
+        if (!members.find((m) => m === userToken)) {
+            members.push(userToken);
+        }
 
-    ) {
+        if (members.length < 2) {
+            return { error: 'chat must have more than one participant' };
+        }
 
+        try {
+            let chat = new Chat();
+            chat.members = await Promise.all(members.map((m) => User.findOneBy({ token: m })));
+            chat = await Chat.create(chat).save();
+            return { chat };
+        } catch (err) {
+            return { error: 'could not create chat' };
+        }
     }
 
     @Mutation(() => MessageResponse)
+    @UseMiddleware(isAuth)
     async sendMessage(
         @Arg("chatId") chatId: string,
         @Arg("text") text: string,
         @Ctx() { req }: MyContext
     ) {
         const sender = req.session.userToken;
-        let error = null;
-        let message;
 
         try {
-            let chat: Chat = await Chat.findOneBy({ id: chatId });
+            const chat: Chat = await Chat.findOneBy({ id: chatId });
             if (chat === null) {
-                error = 'No such chat could be found';
+                return { error: 'no such chat could be found' };
             } else if (chat.members.find((m) => m.token === sender) === undefined) {
-                error = 'User is not a member of this chat';
+                return { error: 'user is not a member of this chat' };
             } else {
-                message = new Message();
+                let message = new Message();
                 message.text = text;
-                message.sender = sender;
-                message.chat = chatId;
+                message.sender = await User.findOneBy({ token: sender });
+                message.chat = chat;
                 message = await Message.create(message).save();
+                return { message }
             }
         } catch (err) {
-            error = 'Unexpected error occurred';
-        }
-
-        if (error === null) {
-            return { message }
-        } else {
-            return { error }
+            return { error: 'unexpected error occurred' };
         }
     }
 }
