@@ -11,6 +11,13 @@ import bodyParser from 'body-parser'
 import { buildSchema } from 'type-graphql'
 import UserResolver from './resolvers/user-resolver.js'
 import AppDataSource from './data-source.js'
+import { MyContext } from './types/my-context.js';
+
+declare module 'express-session' {
+    export interface SessionData {
+        userToken: string;
+    }
+}
 
 try {
     // connect to Postgres
@@ -22,6 +29,8 @@ try {
 
     const RedisStore = connectRedis(session)
 
+    const redis = new Redis()
+
     app.use(
         session({
             name: 'sid',
@@ -31,7 +40,7 @@ try {
                 sameSite: 'lax',
             },
             store: new RedisStore({
-                client: new Redis(),
+                client: redis,
                 disableTouch: true,
             }),
             saveUninitialized: false,
@@ -40,7 +49,7 @@ try {
         }),
     )
 
-    const server = new ApolloServer({
+    const server = new ApolloServer<MyContext>({
         schema: await buildSchema({
             resolvers: [UserResolver],
             validate: false,
@@ -54,7 +63,13 @@ try {
         '/graphql',
         cors<cors.CorsRequest>(),
         bodyParser.json(),
-        expressMiddleware(server),
+        expressMiddleware(server, {
+            context: async ({req, res}) => ({
+                req,
+                res,
+                redis,
+            }),
+        }),
     )
 
     await new Promise<void>((resolve) => httpServer.listen({ port: process.env.PORT }, resolve))

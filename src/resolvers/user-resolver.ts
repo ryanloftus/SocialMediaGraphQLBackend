@@ -1,13 +1,13 @@
-import { Query, Resolver, ObjectType, Field, Mutation, Arg } from 'type-graphql'
+import { Query, Resolver, ObjectType, Field, Mutation, Arg, Ctx } from 'type-graphql'
 import argon2 from 'argon2'
 import User from '../entities/user.js'
-import FieldError from '../utils/field-error.js'
 import OperationResultResponse from '../utils/operation-result.js'
+import { MyContext } from '../types/my-context.js'
 
 @ObjectType()
 class UserResponse {
-    @Field(() => [FieldError], { nullable: true })
-    errors?: FieldError[]
+    @Field(() => String, { nullable: true })
+    error?: string
 
     @Field(() => User, { nullable: true })
     user?: User
@@ -19,38 +19,38 @@ export default class UserResolver {
     async createUser(
         @Arg("username") username: string,
         @Arg("password") password: string,
-    ) {
-        let user: User
-        let errors: FieldError[] = Array()
+        @Arg("confirmPassword") confirmPassword: string,
+        @Ctx() { req }: MyContext,
+    ): Promise<UserResponse> {
 
-        if (password.length < MIN_PASSWORD_LENGTH) {
-            errors.push({ field: "password", message: `password must be at least ${MIN_PASSWORD_LENGTH} characters long`})
+        if (/\s/g.test(username)) {
+            return { error: 'username must not contain whitespace' };
+        } else if (password.length < MIN_PASSWORD_LENGTH) {
+            return { error: `password must be at least ${MIN_PASSWORD_LENGTH} characters long` }
+        } else if (password !== confirmPassword) {
+            return { error: 'confirm password does not match password' }
         }
 
         try {
             const hashedPassword = await argon2.hash(password)
-            user = await User.create({ username: username, password: hashedPassword }).save()
-        } catch (error) {
-            errors.push({ field: "username", message: "username already exists" })
-        }
-
-        if (errors.length === 0) {
+            const user = await User.create({ username: username, password: hashedPassword }).save()
+            req.session.userToken = user.token;
             return { user }
-        } else {
-            return { errors }
+        } catch (error) {
+            return { error: "username already exists" }
         }
     }
 
     @Query(() => UserResponse)
     async getUser(
         @Arg("userToken") userToken: string,
-    ) {
+    ): Promise<UserResponse> {
         let user: User
 
         try {
             user = await User.findOne({ where: { token: userToken } })
         } catch (error) {
-            return error
+            return { error: 'No such user' }
         }
 
         return { user }
@@ -61,51 +61,64 @@ export default class UserResolver {
         @Arg("userToken") userToken: string,
         @Arg("oldPassword") oldPassword: string,
         @Arg("newPassword") newPassword: string,
-    ) {
-        let errors: FieldError[] = Array()
-        let user: User | null
+    ): Promise<OperationResultResponse> {
+        let error: string = null
+        let user: User = null
 
         try {
             user = await User.findOne({ where: { token: userToken } })
+            if (!user) throw new Error()
             
             const hashedOldPassword = await argon2.hash(oldPassword)
-            if (user?.password !== hashedOldPassword) {
-                errors.push({ field: "oldPassword", message: "password entered is incorrect" })
-            }
-
-            if (newPassword.length < MIN_PASSWORD_LENGTH) {
-                errors.push({ field: "newPassword", message: `new password must be at least ${MIN_PASSWORD_LENGTH} characters long` })
-            }
-
-            if (errors.length === 0) {
+            if (user.password !== hashedOldPassword) {
+                error = "password entered is incorrect"
+            } else if (newPassword.length < MIN_PASSWORD_LENGTH) {
+                error = `new password must be at least ${MIN_PASSWORD_LENGTH} characters long`
+            } else {
                 const hashedPassword = await argon2.hash(newPassword)
                 await User.update({ token: userToken }, { password: hashedPassword })
             }
         } catch {
-            errors.push({ field: "userToken", message: `user with token ${userToken} does not exist` })
+            error = `user with token ${userToken} does not exist`
         }
 
-        if (errors.length === 0) {
+        if (!error) {
             return { didOperationSucceed: true }
         } else {
-            return { didOperationSucceed: false, errors: errors }
+            return { didOperationSucceed: false, error }
         }
     }
 
     @Mutation(() => OperationResultResponse)
     async deleteUser(
         @Arg("userToken") userToken: string,
-    ) {
+    ): Promise<OperationResultResponse> {
         try {
             const user: User = await User.findOne({ where: { token: userToken } })
             await user.remove()
         } catch {
             return {
                 didOperationSucceed: false,
-                errors: [{ field: "userToken", message: `user with token ${userToken} does not exist`}],
+                error: `user with token ${userToken} does not exist`,
             }
         }
         return { didOperationSucceed: true }
+    }
+
+    @Mutation(() => UserResponse)
+    async login(
+        @Arg("username") username: string,
+        @Arg("password") password: string,
+        @Ctx() { req }: MyContext,
+    ): Promise<UserResponse> {
+        const user = await User.findOneBy({ username: username });
+        const valid = user && await argon2.verify(user.password, password);
+        if (valid) {
+            req.session.userToken = user.token; // todo: check user token from context in each mutation/query
+            return { user };
+        } else {
+            return { error: 'username or password is incorrect' };
+        }
     }
 }
 

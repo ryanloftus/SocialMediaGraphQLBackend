@@ -7,6 +7,7 @@ import {
     ManyToMany,
     JoinTable,
 } from "typeorm";
+import Chat from "./chat.js";
 
 @ObjectType()
 @Entity()
@@ -24,15 +25,19 @@ export default class User extends BaseEntity {
     password!: string
 
     @Field(() => [User], { nullable: true })
-    @ManyToMany(() => User)
+    @ManyToMany(() => User, (user) => user.following)
     followers?: User[]
 
     @Field(() => [User], { nullable: true })
-    @ManyToMany(() => User)
+    @ManyToMany(() => User, (user) => user.followers)
     @JoinTable()
     following?: User[]
 
     @Field(() => String, { nullable: true })
     @Column({ type: String, nullable: true })
     profilePicUrl?: string
+
+    @Field(() => [Chat])
+    @ManyToMany(() => Chat, (chat) => chat.members)
+    chats?: Chat[]
 }
