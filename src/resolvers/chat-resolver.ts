@@ -45,7 +45,8 @@ export default class ChatResolver {
         try {
             let chat = new Chat();
             chat.members = await Promise.all(members.map((m) => User.findOneBy({ token: m })));
-            chat = await Chat.create({...chat}).save();
+            chat = Chat.create({...chat});
+            await chat.save();
             return { chat };
         } catch (err) {
             return { error: 'could not create chat' };
@@ -72,7 +73,8 @@ export default class ChatResolver {
                 message.text = text;
                 message.sender = await User.findOneBy({ token: sender });
                 message.chat = chat;
-                message = await Message.create(message).save();
+                message = Message.create(message)
+                await message.save();
                 return { message }
             }
         } catch (err) {

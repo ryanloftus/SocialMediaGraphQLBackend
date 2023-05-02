@@ -7,7 +7,7 @@ import Message from "./message.js";
 @Entity()
 export default class Chat extends BaseEntity {
 
-    @Field()
+    @Field(() => String)
     @PrimaryGeneratedColumn()
     id!: string
 
