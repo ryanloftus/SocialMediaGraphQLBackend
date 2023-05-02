@@ -1,1 +1,1 @@
-export const COOKIE_NAME = 'sid';
+export const COOKIE_NAME = 'MYSID';

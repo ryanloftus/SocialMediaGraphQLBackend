@@ -25,22 +25,20 @@ declare module 'express-session' {
 
 config();
 
-const AppDataSource = new DataSource({
-    type: "postgres",
-    host: process.env.HOST,
-    port: parseInt(process.env.DATABASE_PORT),
-    username: process.env.DATABASE_USER,
-    password: null,
-    database: process.env.DATABASE_NAME,
-    synchronize: true,
-    logging: true,
-    entities: ["src/entities/**/*.ts"],
-    subscribers: ["src/subscribers/**/*.ts"],
-    migrations: ["src/migrations/**/*.ts"],
-});
-
 try {
-    const dataSource = await AppDataSource.initialize();
+    const dataSource = await new DataSource({
+        type: "postgres",
+        host: process.env.HOST,
+        port: parseInt(process.env.DATABASE_PORT),
+        username: process.env.DATABASE_USER,
+        password: null,
+        database: process.env.DATABASE_NAME,
+        synchronize: true,
+        logging: true,
+        entities: ["src/entities/**/*.ts"],
+        subscribers: ["src/subscribers/**/*.ts"],
+        migrations: ["src/migrations/**/*.ts"],
+    }).initialize();
 
     const app = express();
 
@@ -56,7 +54,8 @@ try {
             cookie: {
                 maxAge: 1000 * 60 * 60 * 24 * 365, // 1 year
                 httpOnly: true,
-                sameSite: 'lax',
+                sameSite: 'none',
+                secure: true,
             },
             store: new RedisStore({
                 client: redis,
@@ -67,6 +66,8 @@ try {
             resave: false,
         }),
     );
+
+    app.set('trust proxy', true);
 
     const server = new ApolloServer<MyContext>({
         schema: await buildSchema({
@@ -80,7 +81,10 @@ try {
 
     app.use(
         '/graphql',
-        cors<cors.CorsRequest>(),
+        cors<cors.CorsRequest>({
+            credentials: true,
+            origin: "https://studio.apollographql.com",
+        }),
         bodyParser.json(),
         expressMiddleware(server, {
             context: async ({req, res}) => ({
