@@ -1,6 +1,6 @@
 import { Query, Resolver, ObjectType, Field, Mutation, Arg, Ctx, UseMiddleware } from 'type-graphql';
 import Chat from '../entities/chat.js';
-import Message from '../entities/message';
+import Message from '../entities/message.js';
 import OperationResultResponse from '../utils/operation-result';
 import { MyContext } from '../types/my-context';
 import { isAuth } from '../middleware/is-auth.js';
@@ -30,7 +30,7 @@ export default class ChatResolver {
     @Mutation(() => ChatResponse)
     @UseMiddleware(isAuth)
     async createChat(
-        @Arg("memberUserTokens") members: string[],
+        @Arg("memberUserTokens", () => [String]) members: string[],
         @Ctx() { req }: MyContext,  
     ): Promise<ChatResponse> {
         const userToken = req.session.userToken;
@@ -45,7 +45,7 @@ export default class ChatResolver {
         try {
             let chat = new Chat();
             chat.members = await Promise.all(members.map((m) => User.findOneBy({ token: m })));
-            chat = await Chat.create(chat).save();
+            chat = await Chat.create({...chat}).save();
             return { chat };
         } catch (err) {
             return { error: 'could not create chat' };
@@ -58,7 +58,7 @@ export default class ChatResolver {
         @Arg("chatId") chatId: string,
         @Arg("text") text: string,
         @Ctx() { req }: MyContext
-    ) {
+    ): Promise<MessageResponse> {
         const sender = req.session.userToken;
 
         try {

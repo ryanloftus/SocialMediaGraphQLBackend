@@ -1,9 +1,10 @@
-import { Query, Resolver, ObjectType, Field, Mutation, Arg, Ctx } from 'type-graphql'
+import { Query, Resolver, ObjectType, Field, Mutation, Arg, Ctx, UseMiddleware } from 'type-graphql'
 import argon2 from 'argon2'
 import User from '../entities/user.js'
 import OperationResultResponse from '../utils/operation-result.js'
 import { MyContext } from '../types/my-context.js'
 import { COOKIE_NAME } from '../utils/constants.js'
+import { isAuth } from '../middleware/is-auth.js'
 
 @ObjectType()
 class UserResponse {
@@ -137,6 +138,109 @@ export default class UserResolver {
                 else resolve({ didOperationSucceed: true });
             });
         })
+    }
+
+    @Mutation(() => OperationResultResponse)
+    @UseMiddleware(isAuth)
+    async follow(
+        @Arg("userToFollow") userToFollowToken: string,
+        @Ctx() { req }: MyContext,
+    ): Promise<OperationResultResponse> {
+        let user: User = null;
+        let userToFollow: User = null;
+        
+        try {
+            user = await User.findOneBy({ token: req.session.userToken });
+        } catch (err) {
+            return { didOperationSucceed: false, error: 'invalid login session' };
+        }
+
+        if (user.following.find((u) => u.token === userToFollowToken)) {
+            return { didOperationSucceed: false, error: 'already following user' };
+        }
+
+        try {
+            userToFollow = await User.findOneBy({ token: userToFollowToken });
+            if (!userToFollow) throw new Error();
+        } catch (err) {
+            return { didOperationSucceed: false, error: 'invalid user token' };
+        }
+
+        try {
+            user.following.push(userToFollow);
+            await user.save();
+        } catch (err) {
+            return { didOperationSucceed: false, error: 'unexpected error' };
+        }
+
+        return { didOperationSucceed: true };
+    }
+
+    @Mutation(() => OperationResultResponse)
+    @UseMiddleware(isAuth)
+    async unfollow(
+        @Arg("userToUnfollow") userToUnfollowToken: string,
+        @Ctx() { req }: MyContext,
+    ): Promise<OperationResultResponse> {
+        let user: User = null;
+
+        try {
+            user = await User.findOneBy({ token: req.session.userToken });
+        } catch (err) {
+            return { didOperationSucceed: false, error: 'invalid login session' };
+        }
+
+        if (!user.following.find((u) => u.token === userToUnfollowToken)) {
+            return { didOperationSucceed: false, error: 'not following user' };
+        }
+
+        try {
+            const userToUnfollow = await User.findOneBy({ token: userToUnfollowToken });
+            if (!userToUnfollow) throw new Error();
+        } catch (err) {
+            return { didOperationSucceed: false, error: 'invalid user token' };
+        }
+
+        try {
+            user.following = user.following.filter((u) => u.token !== userToUnfollowToken);
+            await user.save();
+        } catch (err) {
+            return { didOperationSucceed: false, error: 'unexpected error' };
+        }
+
+        return { didOperationSucceed: true };
+    }
+
+    @Mutation(() => UserResponse)
+    @UseMiddleware(isAuth)
+    async updateProfilePic(
+        @Arg("newProfilePicUrl") newProfilePicUrl: string,
+        @Ctx() { req }: MyContext,
+    ): Promise<UserResponse> {
+        try {
+            const user = await User.findOneBy({ token: req.session.userToken });
+            user.profilePicUrl = newProfilePicUrl;
+            await user.save();
+            return { user };
+        } catch (err) {
+            return { error: 'unexpected error occurred' };
+        }
+    }
+
+    @Mutation(() => UserResponse)
+    @UseMiddleware(isAuth)
+    async updateBio(
+        @Arg("newBio") newBio: string,
+        @Ctx() { req }: MyContext,
+    ): Promise<UserResponse> {
+        try {
+            const user = await User.findOneBy({ token: req.session.userToken });
+            user.bio = newBio;
+            await user.save();
+            return { user };
+        } catch (err) {
+            return { error: 'unexpected error occurred' };
+        }
     }
 }
 
