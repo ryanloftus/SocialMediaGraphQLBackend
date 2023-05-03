@@ -43,13 +43,35 @@ export default class ChatResolver {
         }
 
         try {
-            let chat = new Chat();
+            let chat: Chat = new Chat();
             chat.members = await Promise.all(members.map((m) => User.findOneBy({ token: m })));
-            chat = Chat.create({...chat});
+            chat = Chat.create(chat);
             await chat.save();
             return { chat };
         } catch (err) {
             return { error: 'could not create chat' };
+        }
+    }
+
+    @Query(() => ChatResponse)
+    @UseMiddleware(isAuth)
+    async getChat(
+        @Arg("chatId") chatId: string,
+        @Ctx() { req }: MyContext,
+    ): Promise<ChatResponse> {
+        const userToken = req.session.userToken;
+        try {
+            const chat: Chat = await Chat.findOneBy({ id: chatId });
+            if (!chat) {
+                return { error: 'no such chat could be found' };
+            } else if (!chat.members?.find((m) => m.token === userToken)) {
+                return { error: 'user is not a member of this chat' };
+            } else {
+                return { chat };
+            }
+        } catch (err) {
+            console.log(err.message);
+            return { error: 'unexpected error occurred' };
         }
     }
 
@@ -66,18 +88,19 @@ export default class ChatResolver {
             const chat: Chat = await Chat.findOneBy({ id: chatId });
             if (chat === null) {
                 return { error: 'no such chat could be found' };
-            } else if (chat.members.find((m) => m.token === sender) === undefined) {
+            } else if (!chat.members?.find((m) => m.token === sender)) {
                 return { error: 'user is not a member of this chat' };
             } else {
                 let message = new Message();
                 message.text = text;
                 message.sender = await User.findOneBy({ token: sender });
                 message.chat = chat;
-                message = Message.create(message)
+                message = Message.create(message);
                 await message.save();
-                return { message }
+                return { message };
             }
         } catch (err) {
+            console.log(err.message);
             return { error: 'unexpected error occurred' };
         }
     }

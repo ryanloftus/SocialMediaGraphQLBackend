@@ -45,18 +45,49 @@ export default class UserResolver {
     }
 
     @Query(() => UserResponse)
+    @UseMiddleware(isAuth)
+    async me(
+        @Ctx() { req }: MyContext,
+    ): Promise<UserResponse> {
+        try {
+            const user = await User.findOne({
+                where: { token: req.session.userToken },
+                relations: {
+                    chats: true,
+                    followers: true,
+                    following: true,
+                },
+            });
+            if (!user) return { error: 'invalid login token' };
+            else return { user };
+        } catch (err) {
+            console.log(err.message);
+            return { error: 'unexpected error occurred' };
+        }
+    }
+
+    @Query(() => UserResponse)
     async getUser(
         @Arg("userToken") userToken: string,
     ): Promise<UserResponse> {
-        let user: User
-
         try {
-            user = await User.findOne({ where: { token: userToken } })
-        } catch (error) {
-            return { error: 'No such user' }
+            const user = await User.findOne({ 
+                where: { token: userToken },
+                relations: {
+                    followers: true,
+                    following: true,
+                    chats: true,
+                },
+            });
+            if (!user) {
+                return { error: 'No such user' };
+            } else {
+                return { user }
+            }
+        } catch (err) {
+            console.log(err.message);
+            return { error: 'unexpected error occurred' };
         }
-
-        return { user }
     }
 
     @Mutation(() => OperationResultResponse)
@@ -147,34 +178,32 @@ export default class UserResolver {
         @Arg("userToFollow") userToFollowToken: string,
         @Ctx() { req }: MyContext,
     ): Promise<OperationResultResponse> {
-        let user: User = null;
-        let userToFollow: User = null;
-        
         try {
-            user = await User.findOneBy({ token: req.session.userToken });
-        } catch (err) {
-            return { didOperationSucceed: false, error: 'invalid login session' };
-        }
+            const user = await User.findOne({
+                where: { token: req.session.userToken },
+                relations: { following: true },
+            });
+            if (!user) {
+                return { didOperationSucceed: false, error: 'invalid login session' };
+            } else if (user.following?.find((u) => u.token === userToFollowToken)) {
+                return { didOperationSucceed: false, error: 'already following user' };
+            }
 
-        if (user.following.find((u) => u.token === userToFollowToken)) {
-            return { didOperationSucceed: false, error: 'already following user' };
-        }
+            const userToFollow = await User.findOneBy({ token: userToFollowToken });
+            if (!userToFollow) {
+                return { didOperationSucceed: false, error: 'user you are trying to follow does not exist' };
+            }
 
-        try {
-            userToFollow = await User.findOneBy({ token: userToFollowToken });
-            if (!userToFollow) throw new Error();
-        } catch (err) {
-            return { didOperationSucceed: false, error: 'invalid user token' };
-        }
-
-        try {
+            if (!user.following) {
+                user.following = [];
+            }
             user.following.push(userToFollow);
             await user.save();
+            return { didOperationSucceed: true };
         } catch (err) {
-            return { didOperationSucceed: false, error: 'unexpected error' };
+            console.log(err.message);
+            return { didOperationSucceed: false, error: 'unexpected error occurred' };
         }
-
-        return { didOperationSucceed: true };
     }
 
     @Mutation(() => OperationResultResponse)
@@ -191,7 +220,7 @@ export default class UserResolver {
             return { didOperationSucceed: false, error: 'invalid login session' };
         }
 
-        if (!user.following.find((u) => u.token === userToUnfollowToken)) {
+        if (!user.following?.find((u) => u.token === userToUnfollowToken)) {
             return { didOperationSucceed: false, error: 'not following user' };
         }
 
