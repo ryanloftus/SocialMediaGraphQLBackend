@@ -240,6 +240,10 @@ export default class UserResolver {
         @Arg("newProfilePicUrl") newProfilePicUrl: string,
         @Ctx() { req }: MyContext,
     ): Promise<UserResponse> {
+        if (newProfilePicUrl.length > MAX_PROFILE_PIC_URL_LENGTH) {
+            return { error: 'profile pic url cannot be more than 250 characters' };
+        }
+
         try {
             const user = await User.findOneBy({ token: req.session.userToken });
             user.profilePicUrl = newProfilePicUrl;
@@ -256,6 +260,10 @@ export default class UserResolver {
         @Arg("newBio") newBio: string,
         @Ctx() { req }: MyContext,
     ): Promise<UserResponse> {
+        if (newBio.length > MAX_BIO_LENGTH) {
+            return { error: 'bio cannot be more than 250 characters' };
+        }
+
         try {
             const user = await User.findOneBy({ token: req.session.userToken });
             user.bio = newBio;
@@ -267,4 +275,6 @@ export default class UserResolver {
     }
 }
 
-const MIN_PASSWORD_LENGTH = 6
+const MIN_PASSWORD_LENGTH = 6;
+const MAX_BIO_LENGTH = 250;
+const MAX_PROFILE_PIC_URL_LENGTH = 250;
