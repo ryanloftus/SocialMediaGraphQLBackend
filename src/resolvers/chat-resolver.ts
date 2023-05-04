@@ -109,4 +109,33 @@ export default class ChatResolver {
             return { error: 'unexpected error occurred' };
         }
     }
+
+    @Mutation(() => ChatResponse)
+    @UseMiddleware(isAuth)
+    async addMemberToChat(
+        @Arg("newMemberUserTokens", () => [String]) newMemberUserTokens: string[],
+        @Arg("chatId") chatId: string,
+        @Ctx() { req }: MyContext,
+    ): Promise<ChatResponse> {
+        const userToken = req.session.userToken;
+        try {
+            const chat: Chat = await Chat.findOne({
+                where: { id: chatId },
+                relations: { members: true },
+            });
+            if (!chat || !chat.members?.find((m) => m.token === userToken)) {
+                return { error: 'could not find chat' };
+            }
+            const newMembers: User[] = await Promise.all(newMemberUserTokens.map((token) => User.findOneBy({ token })));
+            if (newMembers.find((m) => !m)) {
+                return { error: 'not all users specified could be found' };
+            }
+            chat.members = chat.members.concat(newMembers);
+            await chat.save();
+            return { chat };
+        } catch (err) {
+            console.log(err.message);
+            return { error: 'unexpected error occurred' };
+        }
+    }
 }
