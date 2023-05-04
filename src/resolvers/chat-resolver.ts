@@ -61,11 +61,15 @@ export default class ChatResolver {
     ): Promise<ChatResponse> {
         const userToken = req.session.userToken;
         try {
-            const chat: Chat = await Chat.findOneBy({ id: chatId });
-            if (!chat) {
-                return { error: 'no such chat could be found' };
-            } else if (!chat.members?.find((m) => m.token === userToken)) {
-                return { error: 'user is not a member of this chat' };
+            const chat: Chat = await Chat.findOne({
+                where: { id: chatId },
+                relations: {
+                    members: true,
+                    messages: true,
+                },
+            });
+            if (!chat || !chat.members?.find((m) => m.token === userToken)) {
+                return { error: 'chat could not be found' };
             } else {
                 return { chat };
             }
@@ -85,11 +89,12 @@ export default class ChatResolver {
         const sender = req.session.userToken;
 
         try {
-            const chat: Chat = await Chat.findOneBy({ id: chatId });
-            if (chat === null) {
-                return { error: 'no such chat could be found' };
-            } else if (!chat.members?.find((m) => m.token === sender)) {
-                return { error: 'user is not a member of this chat' };
+            const chat: Chat = await Chat.findOne({
+                where: { id: chatId },
+                relations: { members: true },
+            });
+            if (!chat || !chat.members?.find((m) => m.token === sender)) {
+                return { error: 'chat could not be found' };
             } else {
                 let message = new Message();
                 message.text = text;

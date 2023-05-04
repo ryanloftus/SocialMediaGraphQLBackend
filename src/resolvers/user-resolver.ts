@@ -28,19 +28,19 @@ export default class UserResolver {
         if (/\s/g.test(username)) {
             return { error: 'username must not contain whitespace' };
         } else if (password.length < MIN_PASSWORD_LENGTH) {
-            return { error: `password must be at least ${MIN_PASSWORD_LENGTH} characters long` }
+            return { error: `password must be at least ${MIN_PASSWORD_LENGTH} characters long` };
         } else if (password !== confirmPassword) {
-            return { error: 'confirm password does not match password' }
+            return { error: 'confirm password does not match password' };
         }
 
         try {
-            const hashedPassword = await argon2.hash(password)
+            const hashedPassword = await argon2.hash(password);
             const user = User.create({ username: username, password: hashedPassword });
             await user.save();
             req.session.userToken = user.token;
-            return { user }
+            return { user };
         } catch (error) {
-            return { error: "username already exists" }
+            return { error: "username already exists" };
         }
     }
 
@@ -80,7 +80,7 @@ export default class UserResolver {
                 },
             });
             if (!user) {
-                return { error: 'No such user' };
+                return { error: 'no such user' };
             } else {
                 return { user }
             }
@@ -212,33 +212,26 @@ export default class UserResolver {
         @Arg("userToUnfollow") userToUnfollowToken: string,
         @Ctx() { req }: MyContext,
     ): Promise<OperationResultResponse> {
-        let user: User = null;
-
         try {
-            user = await User.findOneBy({ token: req.session.userToken });
-        } catch (err) {
-            return { didOperationSucceed: false, error: 'invalid login session' };
-        }
-
-        if (!user.following?.find((u) => u.token === userToUnfollowToken)) {
-            return { didOperationSucceed: false, error: 'not following user' };
-        }
-
-        try {
+            const user = await User.findOne({
+                where: { token: req.session.userToken },
+                relations: { following: true },
+            });
+            if (!user) {
+                return { didOperationSucceed: false, error: 'invalid login session' };
+            } else if (!user.following?.find((u) => u.token === userToUnfollowToken)) {
+                return { didOperationSucceed: false, error: 'not following user' };
+            }
             const userToUnfollow = await User.findOneBy({ token: userToUnfollowToken });
-            if (!userToUnfollow) throw new Error();
-        } catch (err) {
-            return { didOperationSucceed: false, error: 'invalid user token' };
-        }
-
-        try {
+            if (!userToUnfollow) {
+                return { didOperationSucceed: false, error: 'user does not exist' };
+            }
             user.following = user.following.filter((u) => u.token !== userToUnfollowToken);
             await user.save();
+            return { didOperationSucceed: true };
         } catch (err) {
-            return { didOperationSucceed: false, error: 'unexpected error' };
+            return { didOperationSucceed: false, error: 'unexpected error occurred' };
         }
-
-        return { didOperationSucceed: true };
     }
 
     @Mutation(() => UserResponse)
