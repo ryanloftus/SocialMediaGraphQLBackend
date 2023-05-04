@@ -56,6 +56,7 @@ export default class UserResolver {
                     chats: true,
                     followers: true,
                     following: true,
+                    posts: true,
                 },
             });
             if (!user) return { error: 'invalid login token' };
@@ -77,6 +78,7 @@ export default class UserResolver {
                     followers: true,
                     following: true,
                     chats: true,
+                    posts: true,
                 },
             });
             if (!user) {

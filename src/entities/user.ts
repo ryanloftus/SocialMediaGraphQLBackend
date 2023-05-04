@@ -6,8 +6,10 @@ import {
     BaseEntity,
     ManyToMany,
     JoinTable,
+    OneToMany,
 } from "typeorm";
 import Chat from "./chat.js";
+import Post from "./post.js";
 
 @ObjectType()
 @Entity()
@@ -44,4 +46,8 @@ export default class User extends BaseEntity {
     @Field(() => [Chat], { nullable: true })
     @ManyToMany(() => Chat, (chat) => chat.members)
     chats?: Chat[]
+
+    @Field(() => [Post], { nullable: true })
+    @OneToMany(() => Post, (post) => post.author)
+    posts?: Post[]
 }
