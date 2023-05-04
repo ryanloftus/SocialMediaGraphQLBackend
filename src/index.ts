@@ -16,6 +16,7 @@ import { MyContext } from './types/my-context.js';
 import { COOKIE_NAME } from './utils/constants.js';
 import { DataSource } from "typeorm";
 import ChatResolver from "./resolvers/chat-resolver.js";
+import PostResolver from "./resolvers/post-resolver.js";
 
 declare module 'express-session' {
     export interface SessionData {
@@ -71,7 +72,7 @@ try {
 
     const server = new ApolloServer<MyContext>({
         schema: await buildSchema({
-            resolvers: [UserResolver, ChatResolver],
+            resolvers: [UserResolver, ChatResolver, PostResolver],
             validate: false,
         }),
         plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
