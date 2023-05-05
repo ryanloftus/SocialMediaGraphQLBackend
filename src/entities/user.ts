@@ -50,4 +50,8 @@ export default class User extends BaseEntity {
     @Field(() => [Post], { nullable: true })
     @OneToMany(() => Post, (post) => post.author)
     posts?: Post[]
+
+    @Field(() => String)
+    @Column()
+    recoveryEmail?: string
 }

@@ -275,6 +275,43 @@ export default class UserResolver {
             return { error: 'unexpected error occurred' };
         }
     }
+
+    @Mutation(() => OperationResultResponse)
+    @UseMiddleware(isAuth)
+    async updateRecoveryEmail(
+        @Arg("newEmail") newEmail: string,
+        @Ctx() { req }: MyContext,
+    ): Promise<OperationResultResponse> {
+        try {
+            const user = await User.findOneBy({ token: req.session.userToken });
+            if (!user) throw new Error(`could not find user with token ${req.session.userToken}`);
+            user.recoveryEmail = newEmail;
+            await user.save();
+            return { didOperationSucceed: true };
+        } catch (err) {
+            console.log(err.message);
+            return { didOperationSucceed: false, error: 'unexpected error' };
+        }
+    }
+
+    @Mutation(() => OperationResultResponse)
+    async requestPasswordReset(
+        @Arg("username") username: string,
+    ): Promise<OperationResultResponse> {
+        try {
+            const user: User = await User.findOneBy({ username });
+            if (!user) {
+                return { didOperationSucceed: false, error: `no user with username ${username}` };
+            } else if (!user.recoveryEmail) {
+                return { didOperationSucceed: false, error: 'user does not have a recovery email' };
+            } else {
+                // TODO: send email with code stored in redis for 1 day
+            }
+        } catch (err) {
+            console.log(err.message);
+            return { didOperationSucceed: false, error: 'unexpected error' };
+        }
+    }
 }
 
 const MIN_PASSWORD_LENGTH = 6;
