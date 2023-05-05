@@ -25,6 +25,9 @@ export default class PostResolver {
         @Arg("content") content: string,
         @Ctx() { req }: MyContext,
     ): Promise<PostResponse> {
+        if (content.length > MAX_POST_LENGTH) {
+            return { error: `post cannot be longer than ${MAX_POST_LENGTH} characters` };
+        }
         try {
             const author: User = await User.findOneBy({ token: req.session.userToken });
             if (!author) throw new Error(`could not find user with token ${req.session.userToken}`);
@@ -111,6 +114,9 @@ export default class PostResolver {
         @Ctx() { req }: MyContext,
     ): Promise<OperationResultResponse> {
         const userToken = req.session.userToken;
+        if (commentText.length > MAX_COMMENT_LENGTH) {
+            return { didOperationSucceed: false, error: `comment cannot be longer than ${MAX_COMMENT_LENGTH} characters` };
+        }
         try {
             const post: Post = await Post.findOneBy({ id: postId });
             if (!post) {
@@ -127,3 +133,6 @@ export default class PostResolver {
         }
     }
 }
+
+const MAX_POST_LENGTH = 250;
+const MAX_COMMENT_LENGTH = 250;
