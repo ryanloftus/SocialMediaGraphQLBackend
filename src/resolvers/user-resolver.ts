@@ -1,10 +1,12 @@
 import { Query, Resolver, ObjectType, Field, Mutation, Arg, Ctx, UseMiddleware } from 'type-graphql'
 import argon2 from 'argon2'
+import { v4 } from 'uuid'
 import User from '../entities/user.js'
 import OperationResultResponse from '../utils/operation-result.js'
 import { MyContext } from '../types/my-context.js'
-import { COOKIE_NAME } from '../utils/constants.js'
+import { COOKIE_NAME, ONE_DAY_IN_SECONDS, ONE_TIME_CODE_PREFIX } from '../utils/constants.js'
 import { isAuth } from '../middleware/is-auth.js'
+import sendOneTimeCode from '../utils/send-email.js'
 
 @ObjectType()
 class UserResponse {
@@ -72,7 +74,7 @@ export default class UserResolver {
         @Arg("userToken") userToken: string,
     ): Promise<UserResponse> {
         try {
-            const user = await User.findOne({ 
+            const user = await User.findOne({
                 where: { token: userToken },
                 relations: {
                     followers: true,
@@ -94,35 +96,24 @@ export default class UserResolver {
 
     @Mutation(() => OperationResultResponse)
     async changePassword(
-        @Arg("oldPassword") oldPassword: string,
         @Arg("newPassword") newPassword: string,
+        @Arg("confirmPassword") confirmPassword: string,
         @Ctx() { req }: MyContext,
     ): Promise<OperationResultResponse> {
-        const userToken = req.session.userToken;
-        let error: string = null
-        let user: User = null
-
-        try {
-            user = await User.findOne({ where: { token: userToken } })
-            if (!user) throw new Error()
-            
-            const hashedOldPassword = await argon2.hash(oldPassword)
-            if (user.password !== hashedOldPassword) {
-                error = "password entered is incorrect"
-            } else if (newPassword.length < MIN_PASSWORD_LENGTH) {
-                error = `new password must be at least ${MIN_PASSWORD_LENGTH} characters long`
-            } else {
-                const hashedPassword = await argon2.hash(newPassword)
-                await User.update({ token: userToken }, { password: hashedPassword })
-            }
-        } catch {
-            error = `user with token ${userToken} does not exist`
+        if (newPassword !== confirmPassword) {
+            return { wasSuccess: false, error: 'new password and confirm password do not match' };
+        } else if (newPassword.length < MIN_PASSWORD_LENGTH) {
+            return { wasSuccess: false, error: `password must be at least ${MIN_PASSWORD_LENGTH} characters` };
         }
-
-        if (!error) {
-            return { didOperationSucceed: true }
-        } else {
-            return { didOperationSucceed: false, error }
+        try {
+            const user: User = await User.findOneBy({ token: req.session.userToken });
+            if (!user) throw new Error(`could not find user with token: ${req.session.userToken}` );
+            user.password = await argon2.hash(newPassword);
+            await user.save();
+            return { wasSuccess: true };
+        } catch (err) {
+            console.log(err.message);
+            return { wasSuccess: false, error: 'unexpected error' };
         }
     }
 
@@ -137,12 +128,12 @@ export default class UserResolver {
             await user.remove();
         } catch {
             return {
-                didOperationSucceed: false,
+                wasSuccess: false,
                 error: `user with token ${userToken} does not exist`,
             };
         }
 
-        return { didOperationSucceed: true };
+        return { wasSuccess: true };
     }
 
     @Mutation(() => UserResponse)
@@ -168,8 +159,8 @@ export default class UserResolver {
         return new Promise((resolve) => {
             req.session.destroy((err) => {
                 res.clearCookie(COOKIE_NAME);
-                if (err) resolve({ didOperationSucceed: false, error: 'failed to end session' });
-                else resolve({ didOperationSucceed: true });
+                if (err) resolve({ wasSuccess: false, error: 'failed to end session' });
+                else resolve({ wasSuccess: true });
             });
         })
     }
@@ -186,14 +177,14 @@ export default class UserResolver {
                 relations: { following: true },
             });
             if (!user) {
-                return { didOperationSucceed: false, error: 'invalid login session' };
+                return { wasSuccess: false, error: 'invalid login session' };
             } else if (user.following?.find((u) => u.token === userToFollowToken)) {
-                return { didOperationSucceed: false, error: 'already following user' };
+                return { wasSuccess: false, error: 'already following user' };
             }
 
             const userToFollow = await User.findOneBy({ token: userToFollowToken });
             if (!userToFollow) {
-                return { didOperationSucceed: false, error: 'user you are trying to follow does not exist' };
+                return { wasSuccess: false, error: 'user you are trying to follow does not exist' };
             }
 
             if (!user.following) {
@@ -201,10 +192,10 @@ export default class UserResolver {
             }
             user.following.push(userToFollow);
             await user.save();
-            return { didOperationSucceed: true };
+            return { wasSuccess: true };
         } catch (err) {
             console.log(err.message);
-            return { didOperationSucceed: false, error: 'unexpected error occurred' };
+            return { wasSuccess: false, error: 'unexpected error occurred' };
         }
     }
 
@@ -220,19 +211,19 @@ export default class UserResolver {
                 relations: { following: true },
             });
             if (!user) {
-                return { didOperationSucceed: false, error: 'invalid login session' };
+                return { wasSuccess: false, error: 'invalid login session' };
             } else if (!user.following?.find((u) => u.token === userToUnfollowToken)) {
-                return { didOperationSucceed: false, error: 'not following user' };
+                return { wasSuccess: false, error: 'not following user' };
             }
             const userToUnfollow = await User.findOneBy({ token: userToUnfollowToken });
             if (!userToUnfollow) {
-                return { didOperationSucceed: false, error: 'user does not exist' };
+                return { wasSuccess: false, error: 'user does not exist' };
             }
             user.following = user.following.filter((u) => u.token !== userToUnfollowToken);
             await user.save();
-            return { didOperationSucceed: true };
+            return { wasSuccess: true };
         } catch (err) {
-            return { didOperationSucceed: false, error: 'unexpected error occurred' };
+            return { wasSuccess: false, error: 'unexpected error occurred' };
         }
     }
 
@@ -287,29 +278,72 @@ export default class UserResolver {
             if (!user) throw new Error(`could not find user with token ${req.session.userToken}`);
             user.recoveryEmail = newEmail;
             await user.save();
-            return { didOperationSucceed: true };
+            return { wasSuccess: true };
         } catch (err) {
             console.log(err.message);
-            return { didOperationSucceed: false, error: 'unexpected error' };
+            return { wasSuccess: false, error: 'unexpected error' };
         }
     }
 
     @Mutation(() => OperationResultResponse)
     async requestPasswordReset(
         @Arg("username") username: string,
+        @Ctx() { redis }: MyContext,
     ): Promise<OperationResultResponse> {
         try {
             const user: User = await User.findOneBy({ username });
             if (!user) {
-                return { didOperationSucceed: false, error: `no user with username ${username}` };
+                return { wasSuccess: false, error: `no user with username ${username}` };
             } else if (!user.recoveryEmail) {
-                return { didOperationSucceed: false, error: 'user does not have a recovery email' };
+                return { wasSuccess: false, error: 'user does not have a recovery email' };
             } else {
-                // TODO: send email with code stored in redis for 1 day
+                const oneTimeCode: string = v4();
+                await redis.set(
+                    ONE_TIME_CODE_PREFIX + oneTimeCode,
+                    user.token,
+                    "EX",
+                    ONE_DAY_IN_SECONDS,
+                );
+                const sendEmailResult = await sendOneTimeCode(oneTimeCode, user.recoveryEmail);
+                if (sendEmailResult.wasSuccess) {
+                    return sendEmailResult;
+                } else {
+                    console.log(sendEmailResult.error);
+                    sendEmailResult.error = 'send email failed';
+                    return sendEmailResult;
+                }
             }
         } catch (err) {
             console.log(err.message);
-            return { didOperationSucceed: false, error: 'unexpected error' };
+            return { wasSuccess: false, error: 'unexpected error' };
+        }
+    }
+
+    @Mutation(() => OperationResultResponse)
+    async resetPassword(
+        @Arg("oneTimeCode") oneTimeCode: string,
+        @Arg("username") username: string,
+        @Arg("newPassword") newPassword: string,
+        @Arg("confirmPassword") confirmPassword: string,
+        @Ctx() { redis }: MyContext,
+    ): Promise<OperationResultResponse> {
+        if (newPassword !== confirmPassword) {
+            return { wasSuccess: false, error: 'confirm password does not match password' };
+        } else if (newPassword.length < MIN_PASSWORD_LENGTH) {
+            return { wasSuccess: false, error: `password must be at least ${MIN_PASSWORD_LENGTH} characters` };
+        }
+        try {
+            const oneTimeCodeUserToken: string = await redis.get(ONE_TIME_CODE_PREFIX + oneTimeCode);
+            const user: User = await User.findOneBy({ username });
+            if (!user || user.token !== oneTimeCodeUserToken) {
+                return { wasSuccess: false, error: 'one-time code or username is invalid' };
+            }
+            user.password = await argon2.hash(newPassword);
+            await user.save();
+            return { wasSuccess: true };
+        } catch (err) {
+            console.log(err.message);
+            return { wasSuccess: false, error: 'unexpected error' };
         }
     }
 }

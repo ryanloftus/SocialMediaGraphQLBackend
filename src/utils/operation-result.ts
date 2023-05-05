@@ -4,7 +4,7 @@ import { Field, ObjectType } from 'type-graphql'
 export default class OperationResultResponse {
 
     @Field()
-    didOperationSucceed: boolean
+    wasSuccess: boolean
 
     @Field(() => String, { nullable: true })
     error?: string

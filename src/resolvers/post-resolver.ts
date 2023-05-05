@@ -73,16 +73,16 @@ export default class PostResolver {
         try {
             const post: Post = await Post.findOneBy({ id: postId });
             if (!post) {
-                return { didOperationSucceed: false, error: 'post not found' };
+                return { wasSuccess: false, error: 'post not found' };
             }
             const user: User = await User.findOneBy({ token: userToken });
             if (!user) throw new Error(`user with token ${userToken} not found`);
             const like: Like = Like.create({ user, post });
             await like.save();
-            return { didOperationSucceed: true };
+            return { wasSuccess: true };
         } catch (err) {
             console.log(err.message);
-            return { didOperationSucceed: false, error: 'unexpected error' };
+            return { wasSuccess: false, error: 'unexpected error' };
         }
     }
 
@@ -97,12 +97,12 @@ export default class PostResolver {
                 user: { token: req.session.userToken },
                 post: { id: postId },
             });
-            if (!like) return { didOperationSucceed: false, error: 'existing like not found' };
+            if (!like) return { wasSuccess: false, error: 'existing like not found' };
             await like.remove();
-            return { didOperationSucceed: true };
+            return { wasSuccess: true };
         } catch (err) {
             console.log(err.message);
-            return { didOperationSucceed: false, error: 'unexpected error' };
+            return { wasSuccess: false, error: 'unexpected error' };
         }
     }
 
@@ -115,21 +115,21 @@ export default class PostResolver {
     ): Promise<OperationResultResponse> {
         const userToken = req.session.userToken;
         if (commentText.length > MAX_COMMENT_LENGTH) {
-            return { didOperationSucceed: false, error: `comment cannot be longer than ${MAX_COMMENT_LENGTH} characters` };
+            return { wasSuccess: false, error: `comment cannot be longer than ${MAX_COMMENT_LENGTH} characters` };
         }
         try {
             const post: Post = await Post.findOneBy({ id: postId });
             if (!post) {
-                return { didOperationSucceed: false, error: 'post not found' };
+                return { wasSuccess: false, error: 'post not found' };
             }
             const user: User = await User.findOneBy({ token: userToken });
             if (!user) throw new Error(`user with token ${userToken} not found`);
             const comment: Comment = Comment.create({ author: user, post, text: commentText });
             await comment.save();
-            return { didOperationSucceed: true };
+            return { wasSuccess: true };
         } catch (err) {
             console.log(err.message);
-            return { didOperationSucceed: false, error: 'unexpected error' };
+            return { wasSuccess: false, error: 'unexpected error' };
         }
     }
 }

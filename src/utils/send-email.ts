@@ -19,10 +19,10 @@ export default async function sendOneTimeCode(oneTimeCode: string, to: string): 
     return new Promise<OperationResultResponse>((resolve) => {
         transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
-                resolve({ didOperationSucceed: false, error: error.message });
+                resolve({ wasSuccess: false, error: error.message });
             } else {
                 console.log('Email sent: ' + info.response);
-                resolve({ didOperationSucceed: true });
+                resolve({ wasSuccess: true });
             }
         });
     });

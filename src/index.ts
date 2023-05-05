@@ -15,7 +15,7 @@ import bodyParser from 'body-parser';
 import { buildSchema } from 'type-graphql';
 import UserResolver from './resolvers/user-resolver.js';
 import { MyContext } from './types/my-context.js';
-import { COOKIE_NAME } from './utils/constants.js';
+import { COOKIE_NAME, ONE_YEAR_IN_MS } from './utils/constants.js';
 import { DataSource } from "typeorm";
 import ChatResolver from "./resolvers/chat-resolver.js";
 import PostResolver from "./resolvers/post-resolver.js";
@@ -53,7 +53,7 @@ try {
         session({
             name: COOKIE_NAME,
             cookie: {
-                maxAge: 1000 * 60 * 60 * 24 * 365, // 1 year
+                maxAge: ONE_YEAR_IN_MS,
                 httpOnly: true,
                 sameSite: 'none',
                 secure: true,
