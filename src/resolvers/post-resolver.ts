@@ -31,9 +31,8 @@ export default class PostResolver {
         try {
             const author: User = await User.findOneBy({ token: req.session.userToken });
             if (!author) throw new Error(`could not find user with token ${req.session.userToken}`);
-            const post: Post = Post.create({ content, author });
+            const post: Post = Post.create({ content, author, likes: 0 });
             await post.save();
-            post.likes = 0;
             return { post };
         } catch (err) {
             console.log(err.message);
@@ -53,7 +52,6 @@ export default class PostResolver {
             if (!post) {
                 return { error: 'post not found' };
             }
-            post.likes = await Like.countBy({ postId: post.id });
             return { post };
         } catch (err) {
             console.log(err.message);
@@ -73,6 +71,8 @@ export default class PostResolver {
             if (existingLike) return { wasSuccess: true };
 
             await Like.create({ userToken, postId }).save();
+            const likes = await Like.countBy({ postId });
+            await Post.update({ id: postId }, { likes });
             return { wasSuccess: true };
         } catch (err) {
             console.log(err.message);
@@ -92,6 +92,8 @@ export default class PostResolver {
             if (!existingLike) return { wasSuccess: true };
 
             await Like.delete({ userToken, postId });
+            const likes = await Like.countBy({ postId });
+            await Post.update({ id: postId }, { likes });
             return { wasSuccess: true };
         } catch (err) {
             console.log(err.message);
