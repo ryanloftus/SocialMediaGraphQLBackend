@@ -9,11 +9,11 @@ export default class Message extends BaseEntity {
 
     @Field(() => String)
     @PrimaryGeneratedColumn()
-    id!: string;
+    id!: string
 
     @Field(() => String)
     @Column()
-    text!: string;
+    text!: string
 
     @Field(() => User)
     @ManyToOne(() => User)
@@ -21,9 +21,9 @@ export default class Message extends BaseEntity {
 
     @Field(() => String)
     @CreateDateColumn()
-    timestamp!: Date;
+    timestamp!: Date
 
     @Field(() => Chat)
-    @ManyToOne(() => Chat)
-    chat!: Relation<Chat>;
+    @ManyToOne(() => Chat, (chat: Chat) => chat.messages)
+    chat!: Relation<Chat>
 }

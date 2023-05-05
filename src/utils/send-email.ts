@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import OperationResultResponse from "./operation-result";
+import OperationResultResponse from "./operation-result.js";
 
 const transporter = nodemailer.createTransport({
     service: 'outlook',

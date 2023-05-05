@@ -14,9 +14,9 @@ export default class Chat extends BaseEntity {
     @Field(() => [User])
     @ManyToMany(() => User, (user: User) => user.chats)
     @JoinTable()
-    members?: Relation<User[]>
+    members!: Relation<User[]>
 
     @Field(() => [Message])
-    @OneToMany(() => Message, (message) => message.chat)
-    messages?: Relation<Message[]>
+    @OneToMany(() => Message, (message: Message) => message.chat)
+    messages!: Relation<Message[]>
 }

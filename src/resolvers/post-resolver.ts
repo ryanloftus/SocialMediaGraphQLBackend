@@ -1,11 +1,11 @@
 import { Query, Resolver, ObjectType, Field, Mutation, Arg, Ctx, UseMiddleware } from 'type-graphql';
-import OperationResultResponse from '../utils/operation-result';
-import { MyContext } from '../types/my-context';
+import OperationResultResponse from '../utils/operation-result.js';
+import { MyContext } from '../types/my-context.js';
 import { isAuth } from '../middleware/is-auth.js';
 import User from '../entities/user.js';
-import Post from '../entities/post';
-import Like from '../entities/like';
-import Comment from '../entities/comment';
+import Post from '../entities/post.js';
+import Like from '../entities/like.js';
+import Comment from '../entities/comment.js';
 
 @ObjectType()
 class PostResponse {
@@ -33,6 +33,7 @@ export default class PostResolver {
             if (!author) throw new Error(`could not find user with token ${req.session.userToken}`);
             const post: Post = Post.create({ content, author });
             await post.save();
+            post.likes = 0;
             return { post };
         } catch (err) {
             console.log(err.message);
@@ -45,17 +46,14 @@ export default class PostResolver {
         @Arg("postId") postId: string,
     ): Promise<PostResponse> {
         try {
-            const post = await Post.findOne({
+            const post: Post = await Post.findOne({
                 where: { id: postId },
-                relations: {
-                    author: true,
-                    comments: true,
-                    likes: true,
-                },
+                relations: { author: true, comments: true },
             });
             if (!post) {
                 return { error: 'post not found' };
             }
+            post.likes = await Like.countBy({ postId: post.id });
             return { post };
         } catch (err) {
             console.log(err.message);
@@ -71,14 +69,10 @@ export default class PostResolver {
     ): Promise<OperationResultResponse> {
         const userToken = req.session.userToken;
         try {
-            const post: Post = await Post.findOneBy({ id: postId });
-            if (!post) {
-                return { wasSuccess: false, error: 'post not found' };
-            }
-            const user: User = await User.findOneBy({ token: userToken });
-            if (!user) throw new Error(`user with token ${userToken} not found`);
-            const like: Like = Like.create({ user, post });
-            await like.save();
+            const existingLike: Like = await Like.findOneBy({ userToken, postId });
+            if (existingLike) return { wasSuccess: true };
+
+            await Like.create({ userToken, postId }).save();
             return { wasSuccess: true };
         } catch (err) {
             console.log(err.message);
@@ -92,13 +86,12 @@ export default class PostResolver {
         @Arg("postId") postId: string,
         @Ctx() { req }: MyContext,
     ): Promise<OperationResultResponse> {
+        const userToken = req.session.userToken;
         try {
-            const like: Like = await Like.findOneBy({
-                user: { token: req.session.userToken },
-                post: { id: postId },
-            });
-            if (!like) return { wasSuccess: false, error: 'existing like not found' };
-            await like.remove();
+            const existingLike: Like = await Like.findOneBy({ userToken, postId });
+            if (!existingLike) return { wasSuccess: true };
+
+            await Like.delete({ userToken, postId });
             return { wasSuccess: true };
         } catch (err) {
             console.log(err.message);

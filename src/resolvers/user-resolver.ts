@@ -79,14 +79,13 @@ export default class UserResolver {
                 relations: {
                     followers: true,
                     following: true,
-                    chats: true,
                     posts: true,
                 },
             });
             if (!user) {
                 return { error: 'no such user' };
             } else {
-                return { user }
+                return { user };
             }
         } catch (err) {
             console.log(err.message);

@@ -86,21 +86,18 @@ export default class ChatResolver {
         @Arg("text") text: string,
         @Ctx() { req }: MyContext
     ): Promise<MessageResponse> {
-        const sender = req.session.userToken;
-
+        const senderToken = req.session.userToken;
         try {
             const chat: Chat = await Chat.findOne({
                 where: { id: chatId },
                 relations: { members: true },
             });
-            if (!chat || !chat.members?.find((m) => m.token === sender)) {
+            if (!chat || !chat.members?.find((m) => m.token === senderToken)) {
                 return { error: 'chat could not be found' };
             } else {
-                let message = new Message();
-                message.text = text;
-                message.sender = await User.findOneBy({ token: sender });
-                message.chat = chat;
-                message = Message.create(message);
+                const sender: User = await User.findOneBy({ token: senderToken });
+                if (!sender) throw new Error(`could not find user with token: ${senderToken}`);
+                const message: Message = Message.create<Message>({ text, sender, chat });
                 await message.save();
                 return { message };
             }

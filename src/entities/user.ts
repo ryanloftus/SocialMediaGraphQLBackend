@@ -19,21 +19,33 @@ export default class User extends BaseEntity {
     @PrimaryGeneratedColumn()
     token!: string
 
-    @Field()
+    @Field(() => String)
     @Column({ unique: true })
     username!: string
 
     @Column()
     password!: string
 
-    @Field(() => [User], { nullable: true })
+    @Field(() => [User])
     @ManyToMany(() => User, (user) => user.following)
-    followers?: User[]
+    followers!: User[]
 
-    @Field(() => [User], { nullable: true })
+    @Field(() => [User])
     @ManyToMany(() => User, (user) => user.followers)
     @JoinTable()
-    following?: User[]
+    following!: User[]
+    
+    @Field(() => [Chat])
+    @ManyToMany(() => Chat, (chat) => chat.members)
+    chats!: Chat[]
+
+    @Field(() => [Post])
+    @OneToMany(() => Post, (post) => post.author)
+    posts!: Post[]
+
+    @Field(() => String, { nullable: true })
+    @Column({ type: String, nullable: true })
+    recoveryEmail?: string
 
     @Field(() => String, { nullable: true })
     @Column({ type: String, nullable: true })
@@ -42,16 +54,4 @@ export default class User extends BaseEntity {
     @Field(() => String, { nullable: true })
     @Column({ type: String, nullable: true })
     bio?: string
-
-    @Field(() => [Chat], { nullable: true })
-    @ManyToMany(() => Chat, (chat) => chat.members)
-    chats?: Chat[]
-
-    @Field(() => [Post], { nullable: true })
-    @OneToMany(() => Post, (post) => post.author)
-    posts?: Post[]
-
-    @Field(() => String)
-    @Column()
-    recoveryEmail?: string
 }
