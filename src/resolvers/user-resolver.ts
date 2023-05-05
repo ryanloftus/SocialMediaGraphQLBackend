@@ -142,13 +142,18 @@ export default class UserResolver {
         @Arg("password") password: string,
         @Ctx() { req }: MyContext,
     ): Promise<UserResponse> {
-        const user = await User.findOneBy({ username: username });
-        const valid = user && await argon2.verify(user.password, password);
-        if (valid) {
-            req.session.userToken = user.token;
-            return { user };
-        } else {
-            return { error: 'username or password is incorrect' };
+        try {
+            const user = await User.findOneBy({ username: username });
+            const valid = user && await argon2.verify(user.password, password);
+            if (valid) {
+                req.session.userToken = user.token;
+                return { user };
+            } else {
+                return { error: 'username or password is incorrect' };
+            }
+        } catch (err) {
+            console.log(err.message);
+            return { error: 'unexpected error' };
         }
     }
 
