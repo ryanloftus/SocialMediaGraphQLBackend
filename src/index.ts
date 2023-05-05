@@ -1,5 +1,7 @@
-import "reflect-metadata";
 import { config } from "dotenv-safe";
+config();
+
+import "reflect-metadata";
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
@@ -23,8 +25,6 @@ declare module 'express-session' {
         userToken: string;
     }
 }
-
-config();
 
 try {
     const dataSource = await new DataSource({
