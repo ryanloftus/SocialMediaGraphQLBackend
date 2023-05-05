@@ -345,6 +345,7 @@ export default class UserResolver {
             }
             user.password = await argon2.hash(newPassword);
             await user.save();
+            await redis.del(ONE_TIME_CODE_PREFIX + oneTimeCode);
             return { wasSuccess: true };
         } catch (err) {
             console.log(err.message);
