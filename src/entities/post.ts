@@ -24,7 +24,7 @@ export default class Post extends BaseEntity {
     author!: Relation<User>
 
     @Field(() => Number)
-    @Column()
+    @Column({ type: 'integer' })
     likes!: Number
 
     @Field(() => [Comment])

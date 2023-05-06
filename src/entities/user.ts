@@ -35,9 +35,9 @@ export default class User extends BaseEntity {
     @JoinTable()
     following!: User[]
     
-    @Field(() => [Chat])
+    @Field(() => [Chat], { nullable: true })
     @ManyToMany(() => Chat, (chat) => chat.members)
-    chats!: Chat[]
+    chats?: Chat[]
 
     @Field(() => [Post])
     @OneToMany(() => Post, (post) => post.author)

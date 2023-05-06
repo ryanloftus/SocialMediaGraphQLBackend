@@ -116,25 +116,6 @@ export default class UserResolver {
         }
     }
 
-    @Mutation(() => OperationResultResponse)
-    async deleteUser(
-        @Ctx() { req }: MyContext,
-    ): Promise<OperationResultResponse> {
-        const userToken = req.session.userToken;
-
-        try {
-            const user: User = await User.findOne({ where: { token: userToken } });
-            await user.remove();
-        } catch {
-            return {
-                wasSuccess: false,
-                error: `user with token ${userToken} does not exist`,
-            };
-        }
-
-        return { wasSuccess: true };
-    }
-
     @Mutation(() => UserResponse)
     async login(
         @Arg("username") username: string,
@@ -182,6 +163,8 @@ export default class UserResolver {
             });
             if (!user) {
                 return { wasSuccess: false, error: 'invalid login session' };
+            } else if (user.token === userToFollowToken) {
+                return { wasSuccess: false, error: 'user cannot follow themself' };
             } else if (user.following?.find((u) => u.token === userToFollowToken)) {
                 return { wasSuccess: false, error: 'already following user' };
             }
@@ -214,16 +197,10 @@ export default class UserResolver {
                 where: { token: req.session.userToken },
                 relations: { following: true },
             });
-            if (!user) {
-                return { wasSuccess: false, error: 'invalid login session' };
-            } else if (!user.following?.find((u) => u.token === userToUnfollowToken)) {
-                return { wasSuccess: false, error: 'not following user' };
-            }
-            const userToUnfollow = await User.findOneBy({ token: userToUnfollowToken });
-            if (!userToUnfollow) {
-                return { wasSuccess: false, error: 'user does not exist' };
-            }
-            user.following = user.following.filter((u) => u.token !== userToUnfollowToken);
+            if (!user) throw new Error(`could not find user with token: ${user.token}`);
+            console.log(JSON.stringify(user.following.map((u) => u.token)));
+            console.log(JSON.stringify(userToUnfollowToken))
+            user.following = user.following.filter((u) => u.token != userToUnfollowToken);
             await user.save();
             return { wasSuccess: true };
         } catch (err) {
