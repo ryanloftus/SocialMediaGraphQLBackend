@@ -6,6 +6,7 @@ import User from '../entities/user.js';
 import Post from '../entities/post.js';
 import Like from '../entities/like.js';
 import Comment from '../entities/comment.js';
+import { Any } from 'typeorm';
 
 @ObjectType()
 class PostResponse {
@@ -14,6 +15,15 @@ class PostResponse {
 
     @Field(() => Post, { nullable: true })
     post?: Post
+}
+
+@ObjectType()
+class FeedResponse {
+    @Field(() => String, { nullable: true })
+    error?: string
+
+    @Field(() => [Post], { nullable: true })
+    posts?: Post[]
 }
 
 @Resolver()
@@ -130,7 +140,41 @@ export default class PostResolver {
             return { wasSuccess: false, error: 'unexpected error' };
         }
     }
+
+    @Query(() => FeedResponse)
+    @UseMiddleware(isAuth)
+    async myFeed(
+        @Arg("page") page: number,
+        @Ctx() { req }: MyContext,
+    ): Promise<FeedResponse> {
+        try {
+            const userToken: string = req.session.userToken!;
+            const me: User = await User.findOne({
+                where: { token: userToken },
+                relations: { following: true },
+            });
+            const posts: Post[] = await Post.find({
+                where: {
+                    author: Any(me.following.map((u) => u.token)),
+                },
+                relations: {
+                    author: true,
+                    comments: {
+                        author: true,
+                    },
+                },
+                order: { timestamp: 'DESC' },
+                skip: FEED_PAGE_SIZE * page,
+                take: FEED_PAGE_SIZE,
+            });
+            return { posts };
+        } catch (err) {
+            console.log(err.message);
+            return { error: 'unexpected error' };
+        }
+    }
 }
 
 const MAX_POST_LENGTH = 250;
 const MAX_COMMENT_LENGTH = 250;
+const FEED_PAGE_SIZE = 10;
