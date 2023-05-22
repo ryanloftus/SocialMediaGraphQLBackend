@@ -5,6 +5,7 @@ import OperationResultResponse from '../utils/operation-result';
 import { MyContext } from '../types/my-context';
 import { isAuth } from '../middleware/is-auth.js';
 import User from '../entities/user.js';
+import { ArrayContains } from 'typeorm';
 
 @ObjectType()
 class ChatResponse {
@@ -22,6 +23,15 @@ class MessageResponse {
 
     @Field(() => Message, { nullable: true })
     message?: Message
+}
+
+@ObjectType()
+class ChatsResponse {
+    @Field(() => String, { nullable: true })
+    error?: String
+
+    @Field(() => [Chat], { nullable: true })
+    chats?: Chat[]
 }
 
 @Resolver()
@@ -133,6 +143,29 @@ export default class ChatResolver {
         } catch (err) {
             console.log(err.message);
             return { error: 'unexpected error occurred' };
+        }
+    }
+
+    @Query(() => ChatsResponse)
+    @UseMiddleware(isAuth)
+    async myChats(
+        @Ctx() { req }: MyContext,
+    ): Promise<ChatsResponse> {
+        try {
+            const userToken: string = req.session.userToken!;
+            const chats: Chat[] = (await Chat.find({
+                // where: { members: ArrayContains([userToken]) },
+                relations: {
+                    members: true,
+                    messages: {
+                        sender: true,
+                    },
+                },
+            })).filter((chat) => chat.members.find((u) => u.token === userToken));
+            return { chats };
+        } catch (err) {
+            console.log(err.message);
+            return { error: 'unexpected error' };
         }
     }
 }
