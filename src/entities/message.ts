@@ -23,7 +23,6 @@ export default class Message extends BaseEntity {
     @CreateDateColumn()
     timestamp!: Date
 
-    @Field(() => Chat)
     @ManyToOne(() => Chat, (chat: Chat) => chat.messages)
     chat!: Relation<Chat>
 }

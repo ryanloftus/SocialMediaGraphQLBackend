@@ -65,7 +65,7 @@ export default class ChatResolver {
                 where: { id: chatId },
                 relations: {
                     members: true,
-                    messages: true,
+                    messages: { sender: true },
                 },
             });
             if (!chat || !chat.members?.find((m) => m.token === userToken)) {

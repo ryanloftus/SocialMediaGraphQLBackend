@@ -47,7 +47,10 @@ export default class PostResolver {
         try {
             const post: Post = await Post.findOne({
                 where: { id: postId },
-                relations: { author: true, comments: true },
+                relations: { 
+                    author: true,
+                    comments: { author: true },
+                },
             });
             if (!post) {
                 return { error: 'post not found' };

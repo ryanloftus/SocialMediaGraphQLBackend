@@ -15,7 +15,6 @@ export default class Comment extends BaseEntity {
     @Column()
     text!: string
 
-    @Field(() => Post)
     @ManyToOne(() => Post, (post: Post) => post.comments)
     post!: Relation<Post>
 

@@ -55,7 +55,6 @@ export default class UserResolver {
             const user = await User.findOne({
                 where: { token: req.session.userToken },
                 relations: {
-                    chats: true,
                     followers: true,
                     following: true,
                     posts: true,
